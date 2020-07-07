@@ -56,6 +56,7 @@ func ExampleTxn() {
 		fmt.Printf("failed to begin transaction: %s\n", err)
 		return
 	}
+	//nolint:errcheck
 	defer txn.Abort()
 
 	fmt.Printf("txn id = %d\n", txn.ID())
