@@ -51,8 +51,25 @@ func ExampleTxn() {
 		return
 	}
 
-	if err := lmdb.Run(env, lmdb.MDB_RDONLY, lmdb.TxnBodyFunc(func(txn *lmdb.Txn) error {
-		fmt.Printf("txn id = %d\n", txn.ID())
+	if err := lmdb.Run(env, lmdb.EmptyFlags, lmdb.TxnBodyFunc(func(txn *lmdb.Txn) error {
+		dbi, err := txn.Open("", 0)
+		if err != nil {
+			fmt.Printf("failed to open database: %s\n", err)
+			return err
+		}
+
+		if err := dbi.Put([]byte("Hello"), []byte("World"), 0); err != nil {
+			fmt.Printf("failed to put value: %s\n", err)
+			return err
+		}
+
+		val, err := dbi.Get([]byte("Hello"))
+		if err != nil {
+			fmt.Printf("failed to get value: %s\n", err)
+			return err
+		}
+		fmt.Printf("val = %s\n", val)
+
 		return nil
 	})); err != nil {
 		fmt.Printf("failed to execute lmdb.Run: %s\n", err)
@@ -60,5 +77,5 @@ func ExampleTxn() {
 	}
 
 	// OUTPUT:
-	// txn id = 0
+	// val = World
 }

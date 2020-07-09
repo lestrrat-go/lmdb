@@ -1,5 +1,10 @@
 package lmdb
 
+type DBI struct {
+	handle uint
+	txn *Txn
+}
+
 type Env struct {
 	ptr uintptr
 }

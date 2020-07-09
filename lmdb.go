@@ -22,6 +22,8 @@ const (
 	MDB_NOMEMINIT  = clib.MDB_NOMEMINIT
 )
 
+const EmptyFlags = uint(0)
+
 func (fn TxnBodyFunc) Run(txn *Txn) error {
 	return fn(txn)
 }

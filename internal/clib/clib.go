@@ -25,6 +25,8 @@ import "C"
 import (
 	"fmt"
 	"unsafe"
+
+	"github.com/pkg/errors"
 )
 
 // Error is used to return a numeric return value from the
@@ -37,6 +39,13 @@ type Error struct {
 func (e Error) Error() string {
 	v := C.mdb_strerror(C.int(e.Value))
 	return fmt.Sprintf(`%s (error = %#v, raw = %d)`, e.Message, C.GoString(v), e.Value)
+}
+
+func newError(name string, val int) error {
+	return Error{
+		Message: name + " returned an error",
+		Value:   val,
+	}
 }
 
 // TODO: these should be auto-generated
@@ -113,18 +122,68 @@ func TxnID(ptr uintptr) uint {
 	return uint(C.mdb_txn_id(txn))
 }
 
-func DbiOpen(txnptr uintptr, name string, flags uint, ptr *uintptr) error {
+func DbiOpen(txnptr uintptr, name string, flags uint, handle *uint) error {
 	txn := (*C.MDB_txn)(unsafe.Pointer(txnptr))
-	var dbi *C.MDB_dbi
+	var dbi C.MDB_dbi
 
 	var cstrname *C.char
 	if name != "" {
 		cstrname = C.CString(name)
 		defer C.free(unsafe.Pointer(cstrname))
 	}
-	if ret := C.mdb_dbi_open(txn, cstrname, C.uint(flags), dbi); ret != 0 {
+	if ret := C.mdb_dbi_open(txn, cstrname, C.uint(flags), &dbi); ret != 0 {
 		return Error{Message: `mdb_dbi_open returned an error`, Value: int(ret)}
 	}
-	*ptr = uintptr(unsafe.Pointer(dbi))
+	*handle = uint(dbi)
+	return nil
+}
+
+func PutBytes(txnptr uintptr, dbi uint, key, val []byte, flags uint) error {
+	var keyval, valval C.MDB_val
+
+	keyval.mv_size = C.size_t(len(key))
+	keyval.mv_data = unsafe.Pointer((*C.char)(unsafe.Pointer(&key[0])))
+
+	valval.mv_size = C.size_t(len(val))
+	valval.mv_data = unsafe.Pointer((*C.char)(unsafe.Pointer(&val[0])))
+
+	return Put(txnptr, dbi, uintptr(unsafe.Pointer(&keyval)), uintptr(unsafe.Pointer(&valval)), flags)
+}
+
+func Put(txnptr uintptr, dbi uint, keyptr, valptr uintptr, flags uint) error {
+	txn := (*C.MDB_txn)(unsafe.Pointer(txnptr))
+	key := (*C.MDB_val)(unsafe.Pointer(keyptr))
+	val := (*C.MDB_val)(unsafe.Pointer(valptr))
+
+	if ret := C.mdb_put(txn, C.MDB_dbi(dbi), key, val, C.uint(flags)); ret != 0 {
+		return newError(`mdb_put`, int(ret))
+	}
+	return nil
+}
+
+func GetBytes(txnptr uintptr, dbi uint, key []byte, val *[]byte) error {
+	var keyval, valval C.MDB_val
+
+	keyval.mv_size = C.size_t(len(key))
+	keyval.mv_data = unsafe.Pointer((*C.char)(unsafe.Pointer(&key[0])))
+
+	if err := Get(txnptr, dbi, uintptr(unsafe.Pointer(&keyval)), uintptr(unsafe.Pointer(&valval))); err != nil {
+		return errors.Wrap(err, `failed to execute GetBytes`)
+	}
+
+	// Copy
+	*val = C.GoBytes(valval.mv_data, C.int(valval.mv_size))
+	return nil
+
+}
+
+func Get(txnptr uintptr, dbi uint, keyptr, valptr uintptr) error {
+	txn := (*C.MDB_txn)(unsafe.Pointer(txnptr))
+	key := (*C.MDB_val)(unsafe.Pointer(keyptr))
+	val := (*C.MDB_val)(unsafe.Pointer(valptr))
+
+	if ret := C.mdb_get(txn, C.MDB_dbi(dbi), key, val); ret != 0 {
+		return newError(`mdb_get`, int(ret))
+	}
 	return nil
 }

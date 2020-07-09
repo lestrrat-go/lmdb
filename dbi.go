@@ -2,19 +2,20 @@ package lmdb
 
 import (
 	"github.com/lestrrat-go/lmdb/internal/clib"
-	"github.com/pkg/errors"
 )
 
-type DBI struct {
-	ptr uintptr
-	txn *Txn
+func (dbi *DBI) Txn() *Txn {
+	return dbi.txn
 }
 
-func (dbi *DBI) Open(txn *Txn, name string, flags uint) error {
-	if err := clib.DbiOpen(txn.ptr, name, flags, &dbi.ptr); err != nil {
-		return errors.Wrap(err, `failed to open database`)
+func (dbi *DBI) Get(key []byte) ([]byte, error) {
+	var ret []byte
+	if err := clib.GetBytes(dbi.Txn().ptr, dbi.handle, key, &ret); err != nil {
+		return nil, err
 	}
+	return ret, nil
+}
 
-	dbi.txn = txn
-	return nil
+func (dbi *DBI) Put(key, value []byte, flags uint) error {
+	return clib.PutBytes(dbi.Txn().ptr, dbi.handle, key, value, flags)
 }

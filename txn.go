@@ -71,3 +71,14 @@ func (txn *Txn) ID() int {
 
 	return int(clib.TxnID(txn.ptr))
 }
+
+// Open opens a database in the current transaction.
+func (txn *Txn) Open(name string, flags uint) (*DBI, error) {
+	var dbi DBI
+	if err := clib.DbiOpen(txn.ptr, name, flags, &dbi.handle); err != nil {
+		return nil, errors.Wrap(err, `failed to open database`)
+	}
+
+	dbi.txn = txn
+	return &dbi, nil
+}
