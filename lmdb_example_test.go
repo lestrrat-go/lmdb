@@ -1,16 +1,16 @@
 package lmdb_test
 
 import (
-	"io/ioutil"
 	"fmt"
+	"io/ioutil"
 	"os"
 
 	"github.com/lestrrat-go/lmdb"
 )
 
 func ExampleEnv() {
-	var env lmdb.Env
-	if err := env.Create(); err != nil {
+	env, err := lmdb.NewEnv()
+	if err != nil {
 		fmt.Printf("failed to create the environment: %s\n", err)
 		return
 	}
@@ -32,8 +32,8 @@ func ExampleEnv() {
 }
 
 func ExampleTxn() {
-	var env lmdb.Env
-	if err := env.Create(); err != nil {
+	env, err := lmdb.NewEnv()
+	if err != nil {
 		fmt.Printf("failed to create the environment: %s\n", err)
 		return
 	}
@@ -51,16 +51,14 @@ func ExampleTxn() {
 		return
 	}
 
-	var txn lmdb.Txn
-	if err := txn.Begin(&env, nil, 0); err != nil {
-		fmt.Printf("failed to begin transaction: %s\n", err)
+	if err := lmdb.Run(env, lmdb.MDB_RDONLY, lmdb.TxnBodyFunc(func(txn *lmdb.Txn) error {
+		fmt.Printf("txn id = %d\n", txn.ID())
+		return nil
+	})); err != nil {
+		fmt.Printf("failed to execute lmdb.Run: %s\n", err)
 		return
 	}
-	//nolint:errcheck
-	defer txn.Abort()
-
-	fmt.Printf("txn id = %d\n", txn.ID())
 
 	// OUTPUT:
-	// txn id = 1
+	// txn id = 0
 }

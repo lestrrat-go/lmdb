@@ -1,9 +1,25 @@
+/* Package clib is the only place where we interact witht he world of C directly.
+ * There are two reasons for this.
+ *
+ * First, This allows us to minimize the locations where we need to import the "C" and
+ * "unsafe" packages directly.
+ *
+ * Second, and most importanly, encpasulating the C world in a single package
+ * makes it easier for consumers of this package -- the user-facing Go packages --
+ * to build a more idomatic Go-ish interface. This is because C is inherently "flat":
+ * there are no namespaces and modules, so it's far easier to deal with when the
+ * code is laid out in the same way. In order to translate this to Go, it's much
+ * easier to create single "flat" set of APIs in Go-land, and create a public,
+ * namespaced API on top of it, as opposed to creating a namespaced API directly
+ * on top of a flat C API.
+ */
 package clib
 
 /*
 // Note to self: lmdb does not provide a .pc file for pkg-config. So, um, yeah.
 #cgo LDFLAGS: -llmdb
 #include <lmdb.h>
+#include <stdlib.h>
 */
 import "C"
 import (
@@ -55,7 +71,9 @@ func EnvClose(ptr uintptr) error {
 
 func EnvOpen(ptr uintptr, path string, flags uint, mode uint) error {
 	env := (*C.MDB_env)(unsafe.Pointer(ptr))
-	if ret := C.mdb_env_open(env, C.CString(path), C.uint(flags), C.mdb_mode_t(mode)); ret != 0 {
+	cstrpath := C.CString(path)
+	defer C.free(unsafe.Pointer(cstrpath))
+	if ret := C.mdb_env_open(env, cstrpath, C.uint(flags), C.mdb_mode_t(mode)); ret != 0 {
 		return Error{Message: `mdb_env_open returned an error`, Value: int(ret)}
 	}
 	return nil
@@ -76,6 +94,14 @@ func TxnBegin(envptr uintptr, parentptr uintptr, flags uint, ptr *uintptr) error
 	return nil
 }
 
+func TxnCommit(ptr uintptr) error {
+	txn := (*C.MDB_txn)(unsafe.Pointer(ptr))
+	if ret := C.mdb_txn_commit(txn); ret != 0 {
+		return Error{Message: `mdb_txn_commit returned an error`, Value: int(ret)}
+	}
+	return nil
+}
+
 func TxnAbort(ptr uintptr) error {
 	txn := (*C.MDB_txn)(unsafe.Pointer(ptr))
 	C.mdb_txn_abort(txn)
@@ -90,7 +116,13 @@ func TxnID(ptr uintptr) uint {
 func DbiOpen(txnptr uintptr, name string, flags uint, ptr *uintptr) error {
 	txn := (*C.MDB_txn)(unsafe.Pointer(txnptr))
 	var dbi *C.MDB_dbi
-	if ret := C.mdb_dbi_open(txn, C.CString(name), C.uint(flags), dbi); ret != 0 {
+
+	var cstrname *C.char
+	if name != "" {
+		cstrname = C.CString(name)
+		defer C.free(unsafe.Pointer(cstrname))
+	}
+	if ret := C.mdb_dbi_open(txn, cstrname, C.uint(flags), dbi); ret != 0 {
 		return Error{Message: `mdb_dbi_open returned an error`, Value: int(ret)}
 	}
 	*ptr = uintptr(unsafe.Pointer(dbi))

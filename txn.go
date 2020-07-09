@@ -1,12 +1,13 @@
 package lmdb
 
 import (
-	"github.com/lestrrat-go/lmdb/clib"
+	"github.com/lestrrat-go/lmdb/internal/clib"
 	"github.com/pkg/errors"
 )
 
 type Txn struct {
 	ptr uintptr
+	env *Env
 }
 
 func (txn *Txn) requireValidTxn() error {
@@ -16,12 +17,40 @@ func (txn *Txn) requireValidTxn() error {
 	return nil
 }
 
-func (txn *Txn) Begin(env *Env, parent *Txn, flags uint) error {
+func NewTxn(env *Env, parent *Txn, flags uint) (*Txn, error) {
+	var txn Txn
 	var parentptr uintptr
 	if parent != nil {
 		parentptr = parent.ptr
 	}
-	return clib.TxnBegin(env.ptr, parentptr, flags, &txn.ptr)
+	if err := clib.TxnBegin(env.ptr, parentptr, flags, &txn.ptr); err != nil {
+		return nil, errors.Wrap(err, `failed to begin transaction`)
+	}
+
+	txn.env = env
+	return &txn, nil
+}
+
+// Begin creates a new transaction, using the receiver object as the
+// parent transaction. The environment is also automatically shared
+// by the parent.
+func (txn *Txn) Begin(flags uint) (*Txn, error) {
+	newTxn, err := NewTxn(txn.env, txn, flags)
+	if err != nil {
+		return nil, errors.Wrap(err, `failed to create sub transaction`)
+	}
+	return newTxn, nil
+}
+
+func (txn *Txn) Commit() error {
+	if err := txn.requireValidTxn(); err != nil {
+		return errors.Wrap(err, `failed to commit`)
+	}
+
+	if err := clib.TxnCommit(txn.ptr); err != nil {
+		return errors.Wrap(err, `failed to commit`)
+	}
+	return nil
 }
 
 func (txn *Txn) Abort() error {
