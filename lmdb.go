@@ -45,7 +45,6 @@ func Run(parent TxnBeginner, flags uint, body TxnBody) error {
 	}
 
 	rdonly := (flags & MDB_RDONLY) == 1
-
 	if !rdonly {
 		// transactions that requires writing, we need to lock the OS thread
 		runtime.LockOSThread()

@@ -138,15 +138,26 @@ func DbiOpen(txnptr uintptr, name string, flags uint, handle *uint) error {
 	return nil
 }
 
+var nullTerminated = []byte{0}
+
+func makeByteVal(b []byte) *C.MDB_val {
+	l := len(b)
+	if l == 0 {
+		b = nullTerminated
+	}
+
+	return &C.MDB_val{
+		mv_size: C.size_t(l),
+		mv_data: unsafe.Pointer(&b[0]),
+	}
+}
+
 func PutBytes(txnptr uintptr, dbi uint, key, val []byte, flags uint) error {
 	var keyval, valval C.MDB_val
-
 	keyval.mv_size = C.size_t(len(key))
 	keyval.mv_data = unsafe.Pointer((*C.char)(unsafe.Pointer(&key[0])))
-
 	valval.mv_size = C.size_t(len(val))
 	valval.mv_data = unsafe.Pointer((*C.char)(unsafe.Pointer(&val[0])))
-
 	return Put(txnptr, dbi, uintptr(unsafe.Pointer(&keyval)), uintptr(unsafe.Pointer(&valval)), flags)
 }
 
@@ -154,36 +165,40 @@ func Put(txnptr uintptr, dbi uint, keyptr, valptr uintptr, flags uint) error {
 	txn := (*C.MDB_txn)(unsafe.Pointer(txnptr))
 	key := (*C.MDB_val)(unsafe.Pointer(keyptr))
 	val := (*C.MDB_val)(unsafe.Pointer(valptr))
-
 	if ret := C.mdb_put(txn, C.MDB_dbi(dbi), key, val, C.uint(flags)); ret != 0 {
 		return newError(`mdb_put`, int(ret))
 	}
 	return nil
 }
 
-func GetBytes(txnptr uintptr, dbi uint, key []byte, val *[]byte) error {
-	var keyval, valval C.MDB_val
-
-	keyval.mv_size = C.size_t(len(key))
-	keyval.mv_data = unsafe.Pointer((*C.char)(unsafe.Pointer(&key[0])))
-
-	if err := Get(txnptr, dbi, uintptr(unsafe.Pointer(&keyval)), uintptr(unsafe.Pointer(&valval))); err != nil {
-		return errors.Wrap(err, `failed to execute GetBytes`)
-	}
-
-	// Copy
-	*val = C.GoBytes(valval.mv_data, C.int(valval.mv_size))
-	return nil
-
-}
-
-func Get(txnptr uintptr, dbi uint, keyptr, valptr uintptr) error {
+// very thin wrapper
+func mdbGet(txnptr uintptr, dbi uint, keyptr, valptr uintptr) error {
 	txn := (*C.MDB_txn)(unsafe.Pointer(txnptr))
 	key := (*C.MDB_val)(unsafe.Pointer(keyptr))
 	val := (*C.MDB_val)(unsafe.Pointer(valptr))
-
 	if ret := C.mdb_get(txn, C.MDB_dbi(dbi), key, val); ret != 0 {
 		return newError(`mdb_get`, int(ret))
 	}
 	return nil
+}
+
+func GetBytes(txnptr uintptr, zerocopy bool, dbi uint, key []byte, val *[]byte) error {
+	var keyval, valval C.MDB_val
+	keyval.mv_size = C.size_t(len(key))
+	keyval.mv_data = unsafe.Pointer((*C.char)(unsafe.Pointer(&key[0])))
+
+	if err := mdbGet(txnptr, dbi, uintptr(unsafe.Pointer(&keyval)), uintptr(unsafe.Pointer(&valval))); err != nil {
+		return errors.Wrap(err, `failed to execute GetBytes`)
+	}
+
+	if zerocopy {
+		*val = (*[0xffffffff]byte)(unsafe.Pointer(valval.mv_data))[:valval.mv_size:valval.mv_size]
+	} else {
+		*val = C.GoBytes(valval.mv_data, C.int(valval.mv_size))
+	}
+	return nil
+}
+
+func Get(txnptr uintptr, dbi uint, keyptr, valptr uintptr) error {
+	return mdbGet(txnptr, dbi, keyptr, valptr)
 }

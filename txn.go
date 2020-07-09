@@ -5,11 +5,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-type Txn struct {
-	ptr uintptr
-	env *Env
-}
-
 func (txn *Txn) requireValidTxn() error {
 	if txn.ptr == 0 {
 		return errors.New(`invalid transaction: txn has not bee initialized via Begin(), or has already been freed via Commit()/Abort()`)
@@ -81,4 +76,15 @@ func (txn *Txn) Open(name string, flags uint) (*DBI, error) {
 
 	dbi.txn = txn
 	return &dbi, nil
+}
+
+func (txn *Txn) IsZerocopy() bool {
+	if v := txn.zerocopy; v != nil && *v {
+		return true
+	}
+	return false
+}
+
+func (txn *Txn) Zerocopy(v bool) {
+	txn.zerocopy = &v
 }

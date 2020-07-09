@@ -90,6 +90,7 @@ func ExampleTxn() {
       return err
     }
 
+    dbi.Zerocopy(true) // enable zero copy
     val, err := dbi.Get([]byte("Hello"))
     if err != nil {
       fmt.Printf("failed to get value: %s\n", err)
