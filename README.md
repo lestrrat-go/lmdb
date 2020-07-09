@@ -16,7 +16,7 @@ PR. Who know, we *may* actually finish implementing it.
 * [x] Create/Close MDB_env
 * [x] Create/Close MDB_txn
 * [x] Create MDB_dbi
-* [ ] Actually issue get/put
+* [x] Actually issue get/put
 * [ ] Cursors
 * [ ] Nice-to-have: elegantly integrate with context.Context
 * [ ] Nice-to-have: semi-automatic resource cleanup
