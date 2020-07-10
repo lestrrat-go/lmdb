@@ -1,8 +1,8 @@
 package lmdb
 
 type DBI struct {
-	handle uint
-	txn *Txn
+	handle   uint
+	txn      *Txn
 	zerocopy *bool
 }
 
@@ -14,9 +14,13 @@ type FileHandle struct {
 	fd int
 }
 
-type Txn struct {
+type Stat struct {
 	ptr uintptr
-	env *Env
+}
+
+type Txn struct {
+	ptr      uintptr
+	env      *Env
 	zerocopy *bool
 }
 

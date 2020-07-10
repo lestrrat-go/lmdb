@@ -115,6 +115,45 @@ func EnvGetFd(ptr uintptr) (int, error) {
 	return int(fd), nil
 }
 
+func EnvStat(ptr uintptr) (uintptr, error) {
+	env := (*C.MDB_env)(unsafe.Pointer(ptr))
+	var stat C.MDB_stat
+	if ret := C.mdb_env_stat(env, &stat); ret != 0 {
+		return 0, newError(`mdb_env_stat`, int(ret))
+	}
+	return uintptr(unsafe.Pointer(&stat)), nil
+}
+
+func StatPSize(ptr uintptr) (uint, error) {
+	stat := (*C.MDB_stat)(unsafe.Pointer(ptr))
+	return uint(stat.ms_psize), nil
+}
+
+func StatDepth(ptr uintptr) (uint, error) {
+	stat := (*C.MDB_stat)(unsafe.Pointer(ptr))
+	return uint(stat.ms_depth), nil
+}
+
+func StatBranchPages(ptr uintptr) (uint, error) {
+	stat := (*C.MDB_stat)(unsafe.Pointer(ptr))
+	return uint(stat.ms_branch_pages), nil
+}
+
+func StatLeafPages(ptr uintptr) (uint, error) {
+	stat := (*C.MDB_stat)(unsafe.Pointer(ptr))
+	return uint(stat.ms_leaf_pages), nil
+}
+
+func StatOverflowPages(ptr uintptr) (uint, error) {
+	stat := (*C.MDB_stat)(unsafe.Pointer(ptr))
+	return uint(stat.ms_overflow_pages), nil
+}
+
+func StatEntries(ptr uintptr) (uint, error) {
+	stat := (*C.MDB_stat)(unsafe.Pointer(ptr))
+	return uint(stat.ms_entries), nil
+}
+
 func TxnBegin(envptr uintptr, parentptr uintptr, flags uint, ptr *uintptr) error {
 	env := (*C.MDB_env)(unsafe.Pointer(envptr))
 	var parent *C.MDB_txn

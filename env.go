@@ -45,6 +45,15 @@ func (e *Env) Fd() (*FileHandle, error) {
 	return &FileHandle{fd: fd}, nil
 }
 
+func (e *Env) Stat() (*Stat, error) {
+	statptr, err := clib.EnvStat(e.ptr)
+	if err != nil {
+		return nil, errors.Wrap(err, `failed to stat environment`)
+	}
+	stat := &Stat{ptr: statptr}
+	return stat, nil
+}
+
 func (e *Env) Open(path string, flags uint, mode uint) error {
 	if err := clib.EnvOpen(e.ptr, path, flags, mode); err != nil {
 		return errors.Wrap(err, `failed to open environment`)
