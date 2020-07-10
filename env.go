@@ -54,6 +54,39 @@ func (e *Env) Stat() (*Stat, error) {
 	return stat, nil
 }
 
+func (e *Env) Info() (*EnvInfo, error) {
+	infoptr, err := clib.EnvInfo(e.ptr)
+	if err != nil {
+		return nil, errors.Wrap(err, `failed to fetch environment info`)
+	}
+	info := &EnvInfo{ptr: infoptr}
+	return info, nil
+}
+
+func (info *EnvInfo) MapAddr() (uintptr, error) {
+	return clib.EnvInfoMapAddr(info.ptr)
+}
+
+func (info *EnvInfo) MapSize() (uint, error) {
+	return clib.EnvInfoMapSize(info.ptr)
+}
+
+func (info *EnvInfo) LastPgno() (uint, error) {
+	return clib.EnvInfoLastPgno(info.ptr)
+}
+
+func (info *EnvInfo) LastTxnID() (uint, error) {
+	return clib.EnvInfoLastTxnID(info.ptr)
+}
+
+func (info *EnvInfo) MaxReaders() (uint, error) {
+	return clib.EnvInfoMaxReaders(info.ptr)
+}
+
+func (info *EnvInfo) NumReaders() (uint, error) {
+	return clib.EnvInfoMaxReaders(info.ptr)
+}
+
 func (e *Env) Open(path string, flags uint, mode uint) error {
 	if err := clib.EnvOpen(e.ptr, path, flags, mode); err != nil {
 		return errors.Wrap(err, `failed to open environment`)

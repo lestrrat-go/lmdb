@@ -10,6 +10,10 @@ type Env struct {
 	ptr uintptr
 }
 
+type EnvInfo struct {
+	ptr uintptr
+}
+
 type FileHandle struct {
 	fd int
 }

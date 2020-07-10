@@ -154,6 +154,45 @@ func StatEntries(ptr uintptr) (uint, error) {
 	return uint(stat.ms_entries), nil
 }
 
+func EnvInfo(ptr uintptr) (uintptr, error) {
+	env := (*C.MDB_env)(unsafe.Pointer(ptr))
+	var info C.MDB_envinfo
+	if ret := C.mdb_env_info(env, &info); ret != 0 {
+		return 0, newError(`mdb_env_info`, int(ret))
+	}
+	return uintptr(unsafe.Pointer(&info)), nil
+}
+
+func EnvInfoMapAddr(ptr uintptr) (uintptr, error) {
+	info := (*C.MDB_envinfo)(unsafe.Pointer(ptr))
+	return uintptr(unsafe.Pointer(info.me_mapaddr)), nil
+}
+
+func EnvInfoMapSize(ptr uintptr) (uint, error) {
+	info := (*C.MDB_envinfo)(unsafe.Pointer(ptr))
+	return uint(info.me_mapsize), nil
+}
+
+func EnvInfoLastPgno(ptr uintptr) (uint, error) {
+	info := (*C.MDB_envinfo)(unsafe.Pointer(ptr))
+	return uint(info.me_last_pgno), nil
+}
+
+func EnvInfoLastTxnID(ptr uintptr) (uint, error) {
+	info := (*C.MDB_envinfo)(unsafe.Pointer(ptr))
+	return uint(info.me_last_txnid), nil
+}
+
+func EnvInfoMaxReaders(ptr uintptr) (uint, error) {
+	info := (*C.MDB_envinfo)(unsafe.Pointer(ptr))
+	return uint(info.me_maxreaders), nil
+}
+
+func EnvInfoNumReaders(ptr uintptr) (uint, error) {
+	info := (*C.MDB_envinfo)(unsafe.Pointer(ptr))
+	return uint(info.me_numreaders), nil
+}
+
 func TxnBegin(envptr uintptr, parentptr uintptr, flags uint, ptr *uintptr) error {
 	env := (*C.MDB_env)(unsafe.Pointer(envptr))
 	var parent *C.MDB_txn
