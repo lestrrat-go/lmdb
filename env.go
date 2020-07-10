@@ -23,6 +23,13 @@ func (e *Env) Close() error {
 	return nil
 }
 
+func (e *Env) Copy(path string) error {
+	if err := clib.EnvCopy(e.ptr, path); err != nil {
+		return errors.Wrap(err, `failed to copy environment`)
+	}
+	return nil
+}
+
 func (e *Env) Open(path string, flags uint, mode uint) error {
 	if err := clib.EnvOpen(e.ptr, path, flags, mode); err != nil {
 		return errors.Wrap(err, `failed to open environment`)

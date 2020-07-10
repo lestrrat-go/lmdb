@@ -66,9 +66,19 @@ const (
 func EnvCreate(ptr *uintptr) error {
 	var env *C.MDB_env
 	if ret := C.mdb_env_create(&env); ret != 0 {
-		return Error{Message: `mdb_env_create returned an error`, Value: int(ret)}
+		return newError(`mdb_env_create`, int(ret))
 	}
 	*ptr = uintptr(unsafe.Pointer(env))
+	return nil
+}
+
+func EnvCopy(ptr uintptr, path string) error {
+	env := (*C.MDB_env)(unsafe.Pointer(ptr))
+	cpath := C.CString(path)
+	defer C.free(unsafe.Pointer(cpath))
+	if ret := C.mdb_env_copy(env, cpath); ret != 0 {
+		return newError(`mdb_env_copy`, int(ret))
+	}
 	return nil
 }
 
@@ -83,7 +93,7 @@ func EnvOpen(ptr uintptr, path string, flags uint, mode uint) error {
 	cstrpath := C.CString(path)
 	defer C.free(unsafe.Pointer(cstrpath))
 	if ret := C.mdb_env_open(env, cstrpath, C.uint(flags), C.mdb_mode_t(mode)); ret != 0 {
-		return Error{Message: `mdb_env_open returned an error`, Value: int(ret)}
+		return newError(`mdb_env_open`, int(ret))
 	}
 	return nil
 }
@@ -97,7 +107,7 @@ func TxnBegin(envptr uintptr, parentptr uintptr, flags uint, ptr *uintptr) error
 
 	var txn *C.MDB_txn
 	if ret := C.mdb_txn_begin(env, parent, C.uint(flags), &txn); ret != 0 {
-		return Error{Message: `mdb_txn_begin returned an error`, Value: int(ret)}
+		return newError(`mdb_txn_begin`, int(ret))
 	}
 	*ptr = uintptr(unsafe.Pointer(txn))
 	return nil
@@ -106,7 +116,7 @@ func TxnBegin(envptr uintptr, parentptr uintptr, flags uint, ptr *uintptr) error
 func TxnCommit(ptr uintptr) error {
 	txn := (*C.MDB_txn)(unsafe.Pointer(ptr))
 	if ret := C.mdb_txn_commit(txn); ret != 0 {
-		return Error{Message: `mdb_txn_commit returned an error`, Value: int(ret)}
+		return newError(`mdb_txn_commit`, int(ret))
 	}
 	return nil
 }
@@ -132,7 +142,7 @@ func DbiOpen(txnptr uintptr, name string, flags uint, handle *uint) error {
 		defer C.free(unsafe.Pointer(cstrname))
 	}
 	if ret := C.mdb_dbi_open(txn, cstrname, C.uint(flags), &dbi); ret != 0 {
-		return Error{Message: `mdb_dbi_open returned an error`, Value: int(ret)}
+		return newError(`mdb_dbi_open`, int(ret))
 	}
 	*handle = uint(dbi)
 	return nil
