@@ -72,12 +72,20 @@ func EnvCreate(ptr *uintptr) error {
 	return nil
 }
 
-func EnvCopy(ptr uintptr, path string) error {
+func EnvCopy(ptr uintptr, path string, flags uint) error {
 	env := (*C.MDB_env)(unsafe.Pointer(ptr))
 	cpath := C.CString(path)
 	defer C.free(unsafe.Pointer(cpath))
-	if ret := C.mdb_env_copy(env, cpath); ret != 0 {
-		return newError(`mdb_env_copy`, int(ret))
+	if ret := C.mdb_env_copy2(env, cpath, C.uint(flags)); ret != 0 {
+		return newError(`mdb_env_copy2`, int(ret))
+	}
+	return nil
+}
+
+func EnvCopyFd(ptr uintptr, fd int, flags uint) error {
+	env := (*C.MDB_env)(unsafe.Pointer(ptr))
+	if ret := C.mdb_env_copyfd2(env, C.mdb_filehandle_t(fd), C.uint(flags)); ret != 0 {
+		return newError(`mdb_env_copyfd12`, int(ret))
 	}
 	return nil
 }
@@ -96,6 +104,15 @@ func EnvOpen(ptr uintptr, path string, flags uint, mode uint) error {
 		return newError(`mdb_env_open`, int(ret))
 	}
 	return nil
+}
+
+func EnvGetFd(ptr uintptr) (int, error) {
+	env := (*C.MDB_env)(unsafe.Pointer(ptr))
+	var fd C.mdb_filehandle_t
+	if ret := C.mdb_env_get_fd(env, &fd); ret != -1 {
+		return 0, newError(`mdb_env_get_fd`, int(ret))
+	}
+	return int(fd), nil
 }
 
 func TxnBegin(envptr uintptr, parentptr uintptr, flags uint, ptr *uintptr) error {

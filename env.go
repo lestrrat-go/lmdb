@@ -23,11 +23,26 @@ func (e *Env) Close() error {
 	return nil
 }
 
-func (e *Env) Copy(path string) error {
-	if err := clib.EnvCopy(e.ptr, path); err != nil {
+func (e *Env) Copy(path string, flags uint) error {
+	if err := clib.EnvCopy(e.ptr, path, flags); err != nil {
 		return errors.Wrap(err, `failed to copy environment`)
 	}
 	return nil
+}
+
+func (e *Env) CopyFd(fd *FileHandle, flags uint) error {
+	if err := clib.EnvCopyFd(e.ptr, fd.fd, flags); err != nil {
+		return errors.Wrap(err, `failed to copy environment`)
+	}
+	return nil
+}
+
+func (e *Env) Fd() (*FileHandle, error) {
+	fd, err := clib.EnvGetFd(e.ptr)
+	if err != nil {
+		return nil, errors.Wrap(err, `failed to fetch environment fd`)
+	}
+	return &FileHandle{fd: fd}, nil
 }
 
 func (e *Env) Open(path string, flags uint, mode uint) error {
